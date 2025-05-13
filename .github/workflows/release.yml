@@ -1,0 +1,74 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build All Platforms
+    uses: ./.github/workflows/build.yml
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare artifacts for release
+        run: |
+          mkdir -p release
+
+          # Linux
+          cp artifacts/sanctum-x86_64-unknown-linux-musl/sanctum release/sanctum-x86_64-linux-musl
+          chmod +x release/sanctum-x86_64-linux-musl
+
+          cp artifacts/sanctum-aarch64-unknown-linux-musl/sanctum release/sanctum-aarch64-linux-musl
+          chmod +x release/sanctum-aarch64-linux-musl
+
+          # Windows
+          cp artifacts/sanctum-x86_64-pc-windows-msvc/sanctum.exe release/sanctum-x86_64-windows.exe
+
+          # macOS
+          cp artifacts/sanctum-x86_64-apple-darwin/sanctum release/sanctum-x86_64-macos
+          chmod +x release/sanctum-x86_64-macos
+
+          cp artifacts/sanctum-aarch64-apple-darwin/sanctum release/sanctum-aarch64-macos
+          chmod +x release/sanctum-aarch64-macos
+
+          # Create archives
+          cd release
+
+          tar -czf sanctum-x86_64-linux-musl.tar.gz sanctum-x86_64-linux-musl
+          tar -czf sanctum-aarch64-linux-musl.tar.gz sanctum-aarch64-linux-musl
+
+          zip sanctum-x86_64-windows.zip sanctum-x86_64-windows.exe
+
+          tar -czf sanctum-x86_64-macos.tar.gz sanctum-x86_64-macos
+          tar -czf sanctum-aarch64-macos.tar.gz sanctum-aarch64-macos
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/sanctum-x86_64-linux-musl.tar.gz
+            release/sanctum-aarch64-linux-musl.tar.gz
+            release/sanctum-x86_64-windows.zip
+            release/sanctum-x86_64-macos.tar.gz
+            release/sanctum-aarch64-macos.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true

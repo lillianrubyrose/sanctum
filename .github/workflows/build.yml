@@ -3,8 +3,17 @@ name: Build Sanctum
 on:
   push:
     branches: ["mistress"]
+    tags-ignore: ["v*"]  # Ignore version tags as they'll be handled by release workflow
+    paths:
+      - '**/*.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
   pull_request:
     branches: ["mistress"]
+    paths:
+      - '**/*.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
   workflow_call:
 
 env:

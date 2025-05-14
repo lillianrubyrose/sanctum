@@ -5,7 +5,7 @@ use ratatui::{
 	text::Text,
 	widgets::{
 		Block, BorderType, Cell, HighlightSpacing, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState,
-		Table, TableState,
+		Table, TableState, Wrap,
 	},
 };
 use std::ops::Deref;
@@ -488,7 +488,8 @@ fn render_view_mood_entry(
 
 	let journal_paragraph = Paragraph::new(visible_lines)
 		.block(journal_block)
-		.alignment(Alignment::Left);
+		.alignment(Alignment::Left)
+		.wrap(Wrap { trim: true });
 
 	let date_paragraph = Paragraph::new(date).block(date_block).alignment(Alignment::Center);
 
@@ -552,7 +553,8 @@ fn render_view_journal_entry(
 
 	let journal_paragraph = Paragraph::new(visible_lines)
 		.block(journal_block)
-		.alignment(Alignment::Left);
+		.alignment(Alignment::Left)
+		.wrap(Wrap { trim: true });
 
 	let date_paragraph = Paragraph::new(date).block(date_block).alignment(Alignment::Center);
 

@@ -1,25 +1,31 @@
 # Sanctum
 
-An encrypted terminal-based journal and mood tracker application.
+⚠️ **WARNING**: THIS IS NOT READY FOR PERSONAL USE, I MAY AT ANY TIME ENTIRELY BREAK THE APPLICATION WITH UPDATES UNTIL 1.0
+
+A terminal-based journal and mood tracker application featuring encryption.
 
 ## Features
 
-- Password-protected data leveraging XChaCha20Poly1305 for encryption
+- Password-protected data leveraging XChaCha20Poly1305 for encryption, along with Argon2 for key derivation.
 - Mood tracking with my [mood rating system](#mood-rating-system)
 - SQLite database for data storage
 
 ## Usage
 
+If building from source:
 ```
 cargo run
 ```
+
+otherwise, run the binary for your target system.
 
 When first launched, you'll be prompted to create a passphrase to encrypt your data.
 
 ## Navigation
 
 Navigate the application using the keyboard:
-- Arrow keys to move between fields
+- Tab to move between fields
+- Arrow keys for scrolling, and changing integer field values
 - Enter to confirm selections
 - Escape to go back to previous screens
 

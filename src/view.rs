@@ -8,7 +8,6 @@ use ratatui::{
 		Table, TableState, Wrap,
 	},
 };
-use std::ops::Deref;
 use std::sync::Arc;
 use tui_textarea::TextArea;
 
@@ -23,12 +22,18 @@ pub fn render_app(app: &mut App, frame: &mut Frame) {
 			focused_field,
 			time_offset_hours,
 			journal_textarea,
-		} => render_new_mood_entry(frame, *mood_rating, focused_field, *time_offset_hours, journal_textarea),
+		} => render_new_mood_entry(
+			frame,
+			*mood_rating,
+			*focused_field,
+			*time_offset_hours,
+			journal_textarea,
+		),
 		AppView::NewJournalEntry {
 			time_offset_hours,
 			focused_field,
 			journal_textarea,
-		} => render_new_journal_entry(frame, focused_field, *time_offset_hours, journal_textarea),
+		} => render_new_journal_entry(frame, *focused_field, *time_offset_hours, journal_textarea),
 		AppView::Confirmation {
 			prompt,
 			previous_view: _,
@@ -112,7 +117,7 @@ fn render_main_menu(frame: &mut Frame) {
 fn render_new_mood_entry(
 	frame: &mut Frame,
 	mood_rating: i8,
-	focused_field: &MoodEntryViewField,
+	focused_field: MoodEntryViewField,
 	time_offset_hours: i8,
 	journal_textarea: &mut TextArea,
 ) {
@@ -130,7 +135,7 @@ fn render_new_mood_entry(
 		.title_style(Style::default().fg(Color::LightCyan))
 		.bg(Color::Black)
 		.border_type(BorderType::Rounded)
-		.border_style(if *focused_field == MoodEntryViewField::Mood {
+		.border_style(if focused_field == MoodEntryViewField::Mood {
 			Style::default().fg(Color::LightCyan)
 		} else {
 			Style::default().fg(Color::DarkGray)
@@ -142,7 +147,7 @@ fn render_new_mood_entry(
 		.title_style(Style::default().fg(Color::LightCyan))
 		.bg(Color::Black)
 		.border_type(BorderType::Rounded)
-		.border_style(if *focused_field == MoodEntryViewField::Journal {
+		.border_style(if focused_field == MoodEntryViewField::Journal {
 			Style::default().fg(Color::LightCyan)
 		} else {
 			Style::default().fg(Color::DarkGray)
@@ -155,16 +160,16 @@ fn render_new_mood_entry(
 		.title_style(Style::default().fg(Color::LightCyan))
 		.bg(Color::Black)
 		.border_type(BorderType::Rounded)
-		.border_style(if *focused_field == MoodEntryViewField::TimeOffset {
+		.border_style(if focused_field == MoodEntryViewField::TimeOffset {
 			Style::default().fg(Color::LightCyan)
 		} else {
 			Style::default().fg(Color::DarkGray)
 		});
 
-	let mood_text = format!("(-10 to 10): {}", mood_rating);
+	let mood_text = format!("(-10 to 10): {mood_rating}");
 	let mood_paragraph = Paragraph::new(mood_text).block(mood_block).alignment(Alignment::Center);
 
-	let time_offset_text = format!("{} hours", time_offset_hours);
+	let time_offset_text = format!("{time_offset_hours} hours");
 	let time_offset_paragraph = Paragraph::new(time_offset_text)
 		.block(time_offset_block)
 		.alignment(Alignment::Center);
@@ -173,14 +178,14 @@ fn render_new_mood_entry(
 	let help_widget = Paragraph::new(help_text).fg(Color::Gray).alignment(Alignment::Center);
 
 	frame.render_widget(mood_paragraph, mood_area);
-	frame.render_widget(journal_textarea.deref(), journal_area);
+	frame.render_widget(&*journal_textarea, journal_area);
 	frame.render_widget(time_offset_paragraph, time_offset_area);
 	frame.render_widget(help_widget, help_area);
 }
 
 fn render_new_journal_entry(
 	frame: &mut Frame,
-	focused_field: &JournalEntryViewField,
+	focused_field: JournalEntryViewField,
 	time_offset_hours: i8,
 	journal_textarea: &mut TextArea,
 ) {
@@ -193,7 +198,7 @@ fn render_new_journal_entry(
 		.title_style(Style::default().fg(Color::LightCyan))
 		.bg(Color::Black)
 		.border_type(BorderType::Rounded)
-		.border_style(if *focused_field == JournalEntryViewField::Journal {
+		.border_style(if focused_field == JournalEntryViewField::Journal {
 			Style::default().fg(Color::LightCyan)
 		} else {
 			Style::default().fg(Color::DarkGray)
@@ -206,13 +211,13 @@ fn render_new_journal_entry(
 		.title_style(Style::default().fg(Color::LightCyan))
 		.bg(Color::Black)
 		.border_type(BorderType::Rounded)
-		.border_style(if *focused_field == JournalEntryViewField::TimeOffset {
+		.border_style(if focused_field == JournalEntryViewField::TimeOffset {
 			Style::default().fg(Color::LightCyan)
 		} else {
 			Style::default().fg(Color::DarkGray)
 		});
 
-	let time_offset_text = format!("{} hours", time_offset_hours);
+	let time_offset_text = format!("{time_offset_hours} hours");
 	let time_offset_paragraph = Paragraph::new(time_offset_text)
 		.block(time_offset_block)
 		.alignment(Alignment::Center);
@@ -220,7 +225,7 @@ fn render_new_journal_entry(
 	let help_text = "↑/↓: Adjust Value | Tab: Switch Fields | Enter: Save (with confirmation) | Esc: Cancel";
 	let help_widget = Paragraph::new(help_text).fg(Color::Gray).alignment(Alignment::Center);
 
-	frame.render_widget(journal_textarea.deref(), journal_area);
+	frame.render_widget(&*journal_textarea, journal_area);
 	frame.render_widget(time_offset_paragraph, time_offset_area);
 	frame.render_widget(help_widget, help_area);
 }
@@ -469,7 +474,7 @@ fn render_view_mood_entry(
 		.border_type(BorderType::Rounded)
 		.border_style(Style::default().fg(Color::LightCyan));
 
-	let mood_text = format!("(-10 to 10): {}", mood_rating);
+	let mood_text = format!("(-10 to 10): {mood_rating}");
 	let mood_paragraph = Paragraph::new(mood_text).block(mood_block).alignment(Alignment::Center);
 
 	let [journal_text_area, scrollbar_area] =
@@ -600,7 +605,7 @@ fn render_onboarding(frame: &mut Frame, passphrase_textarea: &mut TextArea, erro
 		.border_style(Style::default().fg(Color::LightCyan));
 	passphrase_textarea.set_block(passphrase_block);
 
-	frame.render_widget(passphrase_textarea.deref(), passphrase_area);
+	frame.render_widget(&*passphrase_textarea, passphrase_area);
 
 	if let Some(err_msg) = error {
 		let error_paragraph = Paragraph::new(err_msg)
@@ -643,7 +648,7 @@ fn render_onboarding_confirm_passphrase(
 		.border_style(Style::default().fg(Color::LightCyan));
 	passphrase_textarea.set_block(passphrase_block);
 
-	frame.render_widget(passphrase_textarea.deref(), passphrase_area);
+	frame.render_widget(&*passphrase_textarea, passphrase_area);
 
 	if let Some(err_msg) = error {
 		let error_paragraph = Paragraph::new(err_msg)
@@ -682,7 +687,7 @@ fn render_login(frame: &mut Frame, passphrase_textarea: &mut TextArea, error: Op
 		.border_style(Style::default().fg(Color::LightCyan));
 	passphrase_textarea.set_block(passphrase_block);
 
-	frame.render_widget(passphrase_textarea.deref(), passphrase_area);
+	frame.render_widget(&*passphrase_textarea, passphrase_area);
 
 	if let Some(err_msg) = error {
 		let error_paragraph = Paragraph::new(err_msg)

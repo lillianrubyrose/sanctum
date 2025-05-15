@@ -290,7 +290,7 @@ impl App<'_> {
 		match crossterm::event::read() {
 			Ok(event) => {
 				if let crossterm::event::Event::Key(key_event) = event {
-					self.handle_key_event(key_event)?
+					self.handle_key_event(key_event)?;
 				}
 
 				Ok(())
@@ -380,7 +380,7 @@ impl App<'_> {
 								&mut app.conn,
 								&app.cipher,
 								mood_rating,
-								journal_text.clone(),
+								&journal_text,
 								time_offset_hours,
 							)?;
 
@@ -438,12 +438,8 @@ impl App<'_> {
 							journal_textarea.select_all();
 							journal_textarea.copy();
 							let journal_text = journal_textarea.yank_text();
-							let entry = db::save_journal_entry(
-								&mut app.conn,
-								&app.cipher,
-								journal_text.clone(),
-								time_offset_hours,
-							)?;
+							let entry =
+								db::save_journal_entry(&mut app.conn, &app.cipher, &journal_text, time_offset_hours)?;
 
 							let mut new_entries = Vec::with_capacity(app.journal_entries.len() + 1);
 							new_entries.extend_from_slice(&app.journal_entries);
@@ -467,12 +463,12 @@ impl App<'_> {
 				previous_view,
 				confirm_fn,
 			} => match key_event.code {
-				KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+				KeyCode::Esc | KeyCode::Char('n' | 'N') => {
 					let mut prev = AppView::MainMenu;
 					std::mem::swap(&mut prev, previous_view.as_mut());
 					self.switch_view(prev);
 				}
-				KeyCode::Char('y') | KeyCode::Char('Y') => {
+				KeyCode::Char('y' | 'Y') => {
 					(*confirm_fn)(self)?;
 				}
 				KeyCode::Left | KeyCode::Right => {
@@ -505,16 +501,14 @@ impl App<'_> {
 				KeyCode::Down => {
 					let idx = table_state
 						.selected()
-						.map(|i| if i >= entries.len() - 1 { 0 } else { i + 1 })
-						.unwrap_or(0);
+						.map_or(0, |i| if i >= entries.len() - 1 { 0 } else { i + 1 });
 					table_state.select(Some(idx));
 					*scroll_state = scroll_state.position(idx * AppView::MOOD_ENTRY_HEIGHT);
 				}
 				KeyCode::Up => {
 					let idx = table_state
 						.selected()
-						.map(|i| if i == 0 { entries.len() - 1 } else { i - 1 })
-						.unwrap_or(0);
+						.map_or(0, |i| if i == 0 { entries.len() - 1 } else { i - 1 });
 					table_state.select(Some(idx));
 					*scroll_state = scroll_state.position(idx * AppView::MOOD_ENTRY_HEIGHT);
 				}
@@ -540,77 +534,8 @@ impl App<'_> {
 				journal_text,
 				scroll_state,
 				scroll_position,
-			} => match key_event.code {
-				KeyCode::Esc => {
-					self.switch_view(AppView::MainMenu);
-				}
-				KeyCode::Up => {
-					if *scroll_position > 0 {
-						*scroll_position -= 1;
-						*scroll_state = scroll_state.position(*scroll_position);
-					}
-				}
-				KeyCode::Down => {
-					let line_count = journal_text.lines().count();
-					if *scroll_position < line_count.saturating_sub(1) {
-						*scroll_position += 1;
-						*scroll_state = scroll_state.position(*scroll_position);
-					}
-				}
-				_ => {}
-			},
-			AppView::EmptyMoodEntryHistory => {
-				if key_event.code == KeyCode::Esc {
-					self.switch_view(AppView::MainMenu);
-				}
 			}
-			AppView::EmptyJournalEntryHistory => {
-				if key_event.code == KeyCode::Esc {
-					self.switch_view(AppView::MainMenu);
-				}
-			}
-			AppView::JournalEntryHistory {
-				entries,
-				table_state,
-				scroll_state,
-				largest_entry_date: _,
-			} => match key_event.code {
-				KeyCode::Esc => {
-					self.switch_view(AppView::MainMenu);
-				}
-				KeyCode::Down => {
-					let idx = table_state
-						.selected()
-						.map(|i| if i >= entries.len() - 1 { 0 } else { i + 1 })
-						.unwrap_or(0);
-					table_state.select(Some(idx));
-					*scroll_state = scroll_state.position(idx * AppView::JOURNAL_ENTRY_HEIGHT);
-				}
-				KeyCode::Up => {
-					let idx = table_state
-						.selected()
-						.map(|i| if i == 0 { entries.len() - 1 } else { i - 1 })
-						.unwrap_or(0);
-					table_state.select(Some(idx));
-					*scroll_state = scroll_state.position(idx * AppView::JOURNAL_ENTRY_HEIGHT);
-				}
-				KeyCode::Enter => {
-					let idx = table_state.selected().expect("row to be selected");
-					let entry = &entries[idx];
-
-					let journal_text = db::get_journal_text(&mut self.conn, &self.cipher, &entry.id, false)?;
-
-					self.next_view = Some(AppView::view_journal_entry(entry.clone(), journal_text));
-					self.require_confirmation("Are you sure you want to view this entry?", |app| {
-						if let Some(view) = app.next_view.take() {
-							app.switch_view(view);
-						}
-						Ok(())
-					});
-				}
-				_ => {}
-			},
-			AppView::ViewJournalEntry {
+			| AppView::ViewJournalEntry {
 				formatted_date: _,
 				journal_text,
 				scroll_state,
@@ -631,6 +556,50 @@ impl App<'_> {
 						*scroll_position += 1;
 						*scroll_state = scroll_state.position(*scroll_position);
 					}
+				}
+				_ => {}
+			},
+			AppView::EmptyMoodEntryHistory | AppView::EmptyJournalEntryHistory => {
+				if key_event.code == KeyCode::Esc {
+					self.switch_view(AppView::MainMenu);
+				}
+			}
+			AppView::JournalEntryHistory {
+				entries,
+				table_state,
+				scroll_state,
+				largest_entry_date: _,
+			} => match key_event.code {
+				KeyCode::Esc => {
+					self.switch_view(AppView::MainMenu);
+				}
+				KeyCode::Down => {
+					let idx = table_state
+						.selected()
+						.map_or(0, |i| if i >= entries.len() - 1 { 0 } else { i + 1 });
+					table_state.select(Some(idx));
+					*scroll_state = scroll_state.position(idx * AppView::JOURNAL_ENTRY_HEIGHT);
+				}
+				KeyCode::Up => {
+					let idx = table_state
+						.selected()
+						.map_or(0, |i| if i == 0 { entries.len() - 1 } else { i - 1 });
+					table_state.select(Some(idx));
+					*scroll_state = scroll_state.position(idx * AppView::JOURNAL_ENTRY_HEIGHT);
+				}
+				KeyCode::Enter => {
+					let idx = table_state.selected().expect("row to be selected");
+					let entry = &entries[idx];
+
+					let journal_text = db::get_journal_text(&mut self.conn, &self.cipher, &entry.id, false)?;
+
+					self.next_view = Some(AppView::view_journal_entry(entry.clone(), journal_text));
+					self.require_confirmation("Are you sure you want to view this entry?", |app| {
+						if let Some(view) = app.next_view.take() {
+							app.switch_view(view);
+						}
+						Ok(())
+					});
 				}
 				_ => {}
 			},

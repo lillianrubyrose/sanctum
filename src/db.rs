@@ -10,7 +10,7 @@ use crate::app::{AppError, AppResult};
 
 const MIGRATION_SLICE: &[M<'_>] = &[
 	M::up(
-		r#"
+		r"
 CREATE TABLE IF NOT EXISTS config(
     enc_verification_hash BLOB,
     nonce BLOB,
@@ -23,16 +23,16 @@ CREATE TABLE IF NOT EXISTS mood_entries(
     enc_timestamp BLOB,
     enc_journal_entry BLOB
 );
-"#,
+",
 	),
 	M::up(
-		r#"
+		r"
 CREATE TABLE IF NOT EXISTS journal_entries(
     id TEXT PRIMARY KEY,
     enc_timestamp BLOB,
     enc_journal_entry BLOB
 );
-"#,
+",
 	),
 ];
 const MIGRATIONS: Migrations<'_> = Migrations::from_slice(MIGRATION_SLICE);
@@ -72,14 +72,14 @@ impl PartialJournalEntry {
 }
 
 fn generate_random_id() -> String {
-	let mut rng = OsRng;
-	let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 	let mut id = String::with_capacity(64);
 
 	for _ in 0..64 {
-		let idx = (rng.next_u32() % alphabet.len() as u32) as usize;
-		id.push(alphabet[idx] as char);
+		let alphabet_len = u32::try_from(ALPHABET.len()).expect("alphabet length will fit in u32");
+		let idx = (OsRng.next_u32() % alphabet_len) as usize;
+		id.push(ALPHABET[idx] as char);
 	}
 
 	id
@@ -161,10 +161,10 @@ pub fn save_mood_entry(
 	conn: &mut Connection,
 	cipher: &XChaCha20Poly1305,
 	mood_rating: i8,
-	journal_entry: String,
+	journal_entry: &str,
 	time_offset_hours: i8,
 ) -> AppResult<PartialMoodEntry> {
-	let timestamp = Utc::now() - Duration::hours((time_offset_hours as i64).abs());
+	let timestamp = Utc::now() - Duration::hours(i64::from(time_offset_hours).abs());
 	let timestamp_local = DateTime::<Local>::from(timestamp);
 	let timestamp: i64 = timestamp.timestamp();
 
@@ -232,8 +232,8 @@ pub fn get_all_mood_entries(conn: &mut Connection, cipher: &XChaCha20Poly1305) -
 
 	let approx_count = conn
 		.query_row("SELECT COUNT(*) FROM mood_entries", [], |row| {
-			let count: i64 = row.get(0)?;
-			Ok(count as usize)
+			let count: i32 = row.get(0)?;
+			Ok(usize::try_from(count).expect("count will fit in usize"))
 		})
 		.unwrap_or(10);
 
@@ -296,10 +296,10 @@ pub fn get_all_mood_entries(conn: &mut Connection, cipher: &XChaCha20Poly1305) -
 pub fn save_journal_entry(
 	conn: &mut Connection,
 	cipher: &XChaCha20Poly1305,
-	journal_entry: String,
+	journal_entry: &str,
 	time_offset_hours: i8,
 ) -> AppResult<PartialJournalEntry> {
-	let timestamp = Utc::now() - Duration::hours((time_offset_hours as i64).abs());
+	let timestamp = Utc::now() - Duration::hours(i64::from(time_offset_hours).abs());
 	let timestamp_local = DateTime::<Local>::from(timestamp);
 	let timestamp: i64 = timestamp.timestamp();
 
@@ -359,8 +359,8 @@ pub fn get_all_journal_entries(
 
 	let approx_count = conn
 		.query_row("SELECT COUNT(*) FROM journal_entries", [], |row| {
-			let count: i64 = row.get(0)?;
-			Ok(count as usize)
+			let count: i32 = row.get(0)?;
+			Ok(usize::try_from(count).expect("count will fit in usize"))
 		})
 		.unwrap_or(10);
 
@@ -416,7 +416,7 @@ pub fn get_journal_text(
 		"journal_entries"
 	};
 
-	let query = format!("SELECT enc_journal_entry FROM {} WHERE id = ?", table_name);
+	let query = format!("SELECT enc_journal_entry FROM {table_name} WHERE id = ?");
 
 	let enc_journal_entry: Vec<u8> = conn
 		.query_row(&query, params![entry_id], |row| row.get(0))

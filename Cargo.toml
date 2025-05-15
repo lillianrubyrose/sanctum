@@ -5,16 +5,16 @@ edition = "2024"
 license = "BSD-3-Clause"
 authors = ["Lillian Rose <me@lillianro.se>"]
 
-[workspace.lints.rust]
+[lints.rust]
 unsafe_code = "forbid"
-unwrap_used = "forbid"
 
-[workspace.lints.clippy]
+[lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 missing_errors_doc = "allow"
 module_name_repetitions = "allow"
 enum_variant_names = "allow"
 wildcard_imports = "allow"
+too_many_lines = "allow"
 
 [dependencies]
 argon2 = "0.5.3"
